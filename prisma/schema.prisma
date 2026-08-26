@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TripStatus {
+  PLANNING
+  ONGOING
+  DONE
+}
+
+model Guild {
+  id            String   @id // discord guild snowflake
+  activeTripId  String?  @unique
+  notifyChannelId String?
+  createdAt     DateTime @default(now())
+
+  trips Trip[] @relation("GuildTrips")
+}
+
+model Trip {
+  id                  String     @id @default(cuid())
+  guildId             String
+  guild               Guild      @relation("GuildTrips", fields: [guildId], references: [id])
+  destination         String
+  startDate           DateTime
+  endDate             DateTime
+  status              TripStatus @default(PLANNING)
+  weatherLastPolledAt DateTime?
+  dailyReminderSentAt DateTime?
+  createdAt           DateTime   @default(now())
+
+  scheduleItems ScheduleItem[]
+  expenses      Expense[]
+  photos        Photo[]
+  packingItems  PackingItem[]
+  weatherSnapshots WeatherSnapshot[]
+
+  @@index([guildId, status])
+}
+
+model ScheduleItem {
+  id        String   @id @default(cuid())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  dayNumber Int
+  content   String
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@index([tripId, dayNumber])
+}
+
+model Expense {
+  id        String   @id @default(cuid())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  payerId   String
+  amount    Int
+  memo      String?
+  createdAt DateTime @default(now())
+
+  shares ExpenseShare[]
+
+  @@index([tripId])
+}
+
+model ExpenseShare {
+  id          String  @id @default(cuid())
+  expenseId   String
+  expense     Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  userId      String
+  shareAmount Int
+
+  @@index([expenseId])
+}
+
+model Photo {
+  id              String   @id @default(cuid())
+  tripId          String
+  trip            Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  discordMessageId String  @unique
+  uploaderId      String
+  storageUrl      String
+  postedAt        DateTime @default(now())
+  dayNumber       Int?
+  locationTag     String?
+
+  @@index([tripId, dayNumber])
+  @@index([tripId, locationTag])
+}
+
+model PackingItem {
+  id        String   @id @default(cuid())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  userId    String
+  item      String
+  checked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([tripId, userId])
+}
+
+model WeatherSnapshot {
+  id          String   @id @default(cuid())
+  tripId      String
+  trip        Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  forecastFor DateTime
+  tempC       Float
+  condition   String
+  polledAt    DateTime @default(now())
+
+  @@unique([tripId, forecastFor])
+}
