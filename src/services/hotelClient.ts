@@ -2,81 +2,117 @@ import { env } from "../config/env";
 import { rapidApiGet } from "./rapidApiClient";
 
 export interface HotelOption {
-  name: string;
-  price: string;
-  rating: string;
-  bookingUrl: string;
+    name: string;
+    price: string;
+    rating: string;
+    bookingUrl: string;
 }
 
 interface SearchDestinationResponse {
-  data?: { dest_id?: string; search_type?: string; name?: string }[];
+    data?: { dest_id?: string; search_type?: string; name?: string }[];
 }
 
 interface SearchHotelsResponse {
-  data?: {
-    hotels?: {
-      property?: { name?: string; reviewScore?: number };
-      priceBreakdown?: { grossPrice?: { value?: number; currency?: string } };
-    }[];
-  };
+    data?: {
+        hotels?: {
+            property?: { name?: string; reviewScore?: number };
+            priceBreakdown?: { grossPrice?: { value?: number; currency?: string } };
+        }[];
+    };
 }
 
-async function resolveDestination(query: string): Promise<{ destId: string; searchType: string } | null> {
-  const res = await rapidApiGet<SearchDestinationResponse>(env.rapidApiHotelHost, "/api/v1/hotels/searchDestination", {
-    query,
-  });
-  const first = res.data?.[0];
-  if (!first?.dest_id) return null;
-  return { destId: first.dest_id, searchType: first.search_type ?? "city" };
-}
+// 429 에러 방지를 위한 딜레이 함수
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * RapidAPI의 "Booking.com" (booking-com15.p.rapidapi.com) 비공식 숙소 검색 엔드포인트를 사용한다.
- * 구독한 RapidAPI 상품에 따라 경로/응답 스키마가 다를 수 있어, 실패 시 여기부터 확인할 것.
+ * 쿼리 문자열을 다듬어 점진적으로 재검색하는 Fallback 로직이 적용된 함수
  */
+async function resolveDestinationWithFallback(query: string): Promise<{ destId: string; searchType: string; resolvedName: string } | null> {
+    // 1. 방해가 되는 자연어 키워드 1차 제거
+    let currentQuery = query.replace(/근처|주변|인근|일대/g, "").trim();
+    const words = currentQuery.split(" ");
+
+    while (words.length > 0) {
+        currentQuery = words.join(" ");
+        try {
+            const res = await rapidApiGet<SearchDestinationResponse>(env.rapidApiHotelHost, "/api/v1/hotels/searchDestination", {
+                query: currentQuery,
+            });
+
+            const first = res.data?.[0];
+            if (first?.dest_id) {
+                return {
+                    destId: first.dest_id,
+                    searchType: first.search_type ?? "city",
+                    resolvedName: first.name ?? currentQuery
+                };
+            }
+        } catch (error: any) {
+            // 429 에러 발생 시 완전히 종료하지 않고, 루프를 멈추거나 로그만 남김
+            console.warn(`[API] ${currentQuery} 검색 중 에러:`, error.message);
+            if (error.message.includes("429")) throw error; // 429는 한도 초과이므로 바로 던짐
+        }
+
+        // 2. 검색에 실패했다면 마지막 단어를 하나 빼고 범위를 넓혀서 재검색
+        words.pop();
+        if (words.length > 0) {
+            await delay(600); // 초당 요청 제한(Rate limit) 방지용 0.6초 대기
+        }
+    }
+
+    return null;
+}
+
 export async function searchHotels(params: {
-  location: string;
-  travelers: number;
-  checkIn: string;
-  checkOut: string;
-  sortBy: "price" | "rating";
+    location: string;
+    travelers: number;
+    checkIn: string;
+    checkOut: string;
+    sortBy: "price" | "rating";
 }): Promise<HotelOption[]> {
-  const destination = await resolveDestination(params.location);
-  if (!destination) {
-    throw new Error(`"${params.location}" 에 대한 숙소 검색 결과를 찾지 못했어요.`);
-  }
+    const destination = await resolveDestinationWithFallback(params.location);
 
-  const res = await rapidApiGet<SearchHotelsResponse>(env.rapidApiHotelHost, "/api/v1/hotels/searchHotels", {
-    dest_id: destination.destId,
-    search_type: destination.searchType,
-    arrival_date: params.checkIn,
-    departure_date: params.checkOut,
-    adults: String(params.travelers),
-    room_qty: "1",
-    currency_code: "KRW",
-    languagecode: "ko",
-  });
+    if (!destination) {
+        throw new Error(`"${params.location}" 및 주변 지역에 대한 숙소 검색 결과를 찾지 못했어요. 도시 이름으로 다시 검색해주세요.`);
+    }
 
-  const hotels = res.data?.hotels ?? [];
-  const withSortKeys = hotels.map((h) => {
-    const priceValue = h.priceBreakdown?.grossPrice?.value;
-    const rating = h.property?.reviewScore;
-    return {
-      option: {
-        name: h.property?.name ?? "알 수 없음",
-        price:
-          priceValue !== undefined
-            ? `${Math.round(priceValue).toLocaleString()}${h.priceBreakdown?.grossPrice?.currency ?? "KRW"}`
-            : "가격 정보 없음",
-        rating: rating !== undefined ? `${rating}` : "평점 없음",
-        bookingUrl: `https://www.booking.com/searchresults.html?dest_id=${encodeURIComponent(destination.destId)}&dest_type=${destination.searchType}&checkin=${params.checkIn}&checkout=${params.checkOut}`,
-      } satisfies HotelOption,
-      priceValue: priceValue ?? Number.POSITIVE_INFINITY,
-      rating: rating ?? Number.NEGATIVE_INFINITY,
-    };
-  });
+    // 재검색으로 인해 목적지가 바뀌었을 경우 안내 로그(선택사항)를 남기기 좋습니다.
+    console.log(`요청: ${params.location} -> 실제 검색 목적지: ${destination.resolvedName}`);
 
-  withSortKeys.sort((a, b) => (params.sortBy === "rating" ? b.rating - a.rating : a.priceValue - b.priceValue));
+    // 호텔 검색 전에도 429 방지를 위해 약간의 딜레이 추가
+    await delay(600);
 
-  return withSortKeys.slice(0, 5).map((h) => h.option);
+    const res = await rapidApiGet<SearchHotelsResponse>(env.rapidApiHotelHost, "/api/v1/hotels/searchHotels", {
+        dest_id: destination.destId,
+        search_type: destination.searchType,
+        arrival_date: params.checkIn,
+        departure_date: params.checkOut,
+        adults: String(params.travelers),
+        room_qty: "1",
+        currency_code: "KRW",
+        languagecode: "ko",
+    });
+
+    const hotels = res.data?.hotels ?? [];
+    const withSortKeys = hotels.map((h) => {
+        const priceValue = h.priceBreakdown?.grossPrice?.value;
+        const rating = h.property?.reviewScore;
+        return {
+            option: {
+                name: h.property?.name ?? "알 수 없음",
+                price:
+                    priceValue !== undefined
+                        ? `${Math.round(priceValue).toLocaleString()}${h.priceBreakdown?.grossPrice?.currency ?? "KRW"}`
+                        : "가격 정보 없음",
+                rating: rating !== undefined ? `${rating}` : "평점 없음",
+                bookingUrl: `https://www.booking.com/searchresults.html?dest_id=${encodeURIComponent(destination.destId)}&dest_type=${destination.searchType}&checkin=${params.checkIn}&checkout=${params.checkOut}`,
+            } satisfies HotelOption,
+            priceValue: priceValue ?? Number.POSITIVE_INFINITY,
+            rating: rating ?? Number.NEGATIVE_INFINITY,
+        };
+    });
+
+    withSortKeys.sort((a, b) => (params.sortBy === "rating" ? b.rating - a.rating : a.priceValue - b.priceValue));
+
+    return withSortKeys.slice(0, 5).map((h) => h.option);
 }
