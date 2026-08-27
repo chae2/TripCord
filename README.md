@@ -8,7 +8,7 @@
   - 필요한 인텐트: `MESSAGE CONTENT INTENT` (봇 설정 페이지에서 활성화 필요)
 - Postgres 연결 문자열 (Supabase 등)
 - Supabase Storage 버킷 (사진 미러링용, 기본 이름 `trip-photos`) — Supabase 프로젝트에서 **public** 버킷으로 생성
-- RapidAPI 키 + 구독한 Skyscanner/호텔 검색 상품의 호스트명
+- RapidAPI 키. 마켓플레이스에서 "Sky Scrapper"(항공권, 호스트 `sky-scrapper.p.rapidapi.com`)와 "Booking.com"(숙소, 호스트 `booking-com15.p.rapidapi.com`) 두 상품을 검색해 각각 무료 Basic 플랜으로 **Subscribe**해야 한다 — 구독 안 하면 403 "not subscribed" 에러가 난다
 - OpenWeatherMap API 키 (One Call API 3.0 구독 필요, 무료 티어로 일 1,000회까지 가능)
 - 카카오 개발자 REST API 키 ([Kakao Developers](https://developers.kakao.com), 로컬(장소 검색) API 활성화)
 
@@ -69,6 +69,6 @@ npm run dev
 
 ## 주의사항
 
-- `/예약`이 사용하는 RapidAPI 엔드포인트(`src/services/skyscannerClient.ts`, `src/services/hotelClient.ts`)는 비공식 API로, 구독한 상품에 따라 요청/응답 스키마가 다를 수 있다. 실패 시 해당 파일의 경로/파라미터를 실제 구독 상품 문서에 맞게 조정할 것.
+- `/예약`이 사용하는 RapidAPI 엔드포인트(`src/services/skyscannerClient.ts`: Sky Scrapper, `src/services/hotelClient.ts`: Booking.com)는 비공식 API라 스키마가 예고 없이 바뀔 수 있다. "not subscribed"(403) 에러가 나면 RapidAPI에서 해당 상품을 구독했는지, "API doesn't exists" 류 에러가 나면 호스트/경로가 여전히 맞는지 먼저 확인할 것.
 - Discord 첨부파일 URL은 서명이 만료되므로, 사진은 업로드 즉시 Supabase Storage로 미러링해 보관한다.
 - `/추천`은 "여행 일정 조사" 역할(`/역할 추가`로 만들어지는 기본 역할 중 하나)을 가진 사람만 사용할 수 있다.

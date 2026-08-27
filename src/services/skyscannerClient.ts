@@ -9,8 +9,8 @@ export interface FlightOption {
   bookingUrl: string;
 }
 
-interface AutoCompleteResponse {
-  data?: { presentation?: { suggestionTitle?: string }; navigation?: { relevantFlightParams?: { skyId?: string; entityId?: string } } }[];
+interface SearchAirportResponse {
+  data?: { skyId?: string; entityId?: string; presentation?: { title?: string } }[];
 }
 
 interface SearchFlightsResponse {
@@ -22,17 +22,20 @@ interface SearchFlightsResponse {
   };
 }
 
-async function resolveSkyId(query: string): Promise<{ skyId: string; entityId: string } | null> {
-  const res = await rapidApiGet<AutoCompleteResponse>(env.rapidApiFlightHost, "/flights/auto-complete", {
+async function resolvePlace(query: string): Promise<{ skyId: string; entityId: string } | null> {
+  const res = await rapidApiGet<SearchAirportResponse>(env.rapidApiFlightHost, "/api/v1/flights/searchAirport", {
     query,
+    locale: "ko-KR",
   });
-  const first = res.data?.[0]?.navigation?.relevantFlightParams;
+  const first = res.data?.[0];
   if (!first?.skyId || !first.entityId) return null;
   return { skyId: first.skyId, entityId: first.entityId };
 }
 
+const ORIGIN_QUERY = "서울";
+
 /**
- * RapidAPI의 비공식 Skyscanner 엔드포인트(sky-scanner3 계열)를 사용한다.
+ * RapidAPI의 "Sky Scrapper"(sky-scrapper.p.rapidapi.com) 비공식 Skyscanner 엔드포인트를 사용한다.
  * 구독한 RapidAPI 상품에 따라 경로/응답 스키마가 다를 수 있어, 실패 시 여기부터 확인할 것.
  */
 export async function searchFlights(params: {
@@ -41,17 +44,26 @@ export async function searchFlights(params: {
   departDate: string;
   returnDate: string;
 }): Promise<FlightOption[]> {
-  const destination = await resolveSkyId(params.location);
+  const [origin, destination] = await Promise.all([resolvePlace(ORIGIN_QUERY), resolvePlace(params.location)]);
+
+  if (!origin) {
+    throw new Error("출발지(서울)에 대한 공항 정보를 찾지 못했어요.");
+  }
   if (!destination) {
     throw new Error(`"${params.location}" 에 대한 항공권 검색 결과를 찾지 못했어요.`);
   }
 
-  const res = await rapidApiGet<SearchFlightsResponse>(env.rapidApiFlightHost, "/flights/search-roundtrip", {
-    fromEntityId: "SEOL", // 서울 출발 고정, 필요 시 옵션화
-    toEntityId: destination.entityId,
-    departDate: params.departDate,
+  const res = await rapidApiGet<SearchFlightsResponse>(env.rapidApiFlightHost, "/api/v1/flights/searchFlights", {
+    originSkyId: origin.skyId,
+    originEntityId: origin.entityId,
+    destinationSkyId: destination.skyId,
+    destinationEntityId: destination.entityId,
+    date: params.departDate,
     returnDate: params.returnDate,
     adults: String(params.travelers),
+    currency: "KRW",
+    market: "KR",
+    countryCode: "KR",
   });
 
   const itineraries = res.data?.itineraries ?? [];

@@ -20,8 +20,8 @@ export const env = {
   supabasePhotoBucket: process.env.SUPABASE_PHOTO_BUCKET || "trip-photos",
 
   rapidApiKey: process.env.RAPIDAPI_KEY || "",
-  rapidApiFlightHost: process.env.RAPIDAPI_FLIGHT_HOST || "sky-scanner3.p.rapidapi.com",
-  rapidApiHotelHost: process.env.RAPIDAPI_HOTEL_HOST || "agoda-com.p.rapidapi.com",
+  rapidApiFlightHost: process.env.RAPIDAPI_FLIGHT_HOST || "sky-scrapper.p.rapidapi.com",
+  rapidApiHotelHost: process.env.RAPIDAPI_HOTEL_HOST || "booking-com15.p.rapidapi.com",
 
   openWeatherApiKey: process.env.OPENWEATHER_API_KEY || "",
 
