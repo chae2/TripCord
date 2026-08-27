@@ -25,6 +25,8 @@ export const env = {
 
   openWeatherApiKey: process.env.OPENWEATHER_API_KEY || "",
 
+  kakaoRestApiKey: process.env.KAKAO_REST_API_KEY || "",
+
   defaultNotifyChannelId: process.env.NOTIFY_CHANNEL_ID || undefined,
   timezone: process.env.TIMEZONE || "Asia/Seoul",
 };

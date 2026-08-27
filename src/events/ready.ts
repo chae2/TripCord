@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { TripCordClient } from "../discordClient";
 import { pollWeatherForUpcomingTrips } from "../scheduler/weatherPolling";
 import { sendDailyReminders } from "../scheduler/dailyReminder";
+import { announceTodaysSchedule } from "../scheduler/scheduleAnnouncement";
 import { env } from "../config/env";
 
 export function registerReady(client: TripCordClient): void {
@@ -22,6 +23,15 @@ export function registerReady(client: TripCordClient): void {
       "0 20 * * *",
       () => {
         sendDailyReminders(client).catch((err) => console.error("[cron] dailyReminder 실패:", err));
+      },
+      { timezone: env.timezone }
+    );
+
+    // 매일 08:00: 진행 중인 여행의 오늘 일정 안내
+    cron.schedule(
+      "0 8 * * *",
+      () => {
+        announceTodaysSchedule(client).catch((err) => console.error("[cron] scheduleAnnouncement 실패:", err));
       },
       { timezone: env.timezone }
     );

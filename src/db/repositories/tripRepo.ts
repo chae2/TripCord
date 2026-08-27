@@ -1,5 +1,6 @@
 import { Trip, TripStatus } from "@prisma/client";
 import { prisma } from "../client";
+import { createDefaultRoles } from "./roleRepo";
 
 export async function getActiveTrip(guildId: string): Promise<Trip | null> {
   return prisma.trip.findFirst({
@@ -40,6 +41,8 @@ export async function createTrip(params: {
     data: { activeTripId: trip.id },
   });
 
+  await createDefaultRoles(trip.id);
+
   return trip;
 }
 
@@ -68,6 +71,16 @@ export async function getTripsNeedingWeatherPoll(now: Date): Promise<Trip[]> {
     where: {
       status: { in: [TripStatus.PLANNING, TripStatus.ONGOING] },
       startDate: { gt: now, lte: in48h },
+    },
+  });
+}
+
+export async function getTripsInProgress(now: Date): Promise<Trip[]> {
+  return prisma.trip.findMany({
+    where: {
+      status: { in: [TripStatus.PLANNING, TripStatus.ONGOING] },
+      startDate: { lte: now },
+      endDate: { gte: now },
     },
   });
 }

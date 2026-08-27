@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
+import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder } from "discord.js";
 import { Command } from "./types";
 import { searchFlights } from "../services/skyscannerClient";
 import { searchHotels } from "../services/hotelClient";
@@ -53,7 +53,7 @@ const searchCommand: Command = {
         returnDate = defaults.returnDate;
       }
     } catch {
-      await interaction.reply({ embeds: [errorEmbed("날짜 형식이 올바르지 않아요. 예: 2026-09-01")], ephemeral: true });
+      await interaction.reply({ embeds: [errorEmbed("날짜 형식이 올바르지 않아요. 예: 2026-09-01")], flags: MessageFlags.Ephemeral });
       return;
     }
 

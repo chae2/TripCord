@@ -2,19 +2,25 @@ import { REST, Routes } from "discord.js";
 import { env } from "../src/config/env";
 
 import { commands as tripCommands } from "../src/commands/trip";
-import { commands as scheduleCommands } from "../src/commands/schedule";
+import { commands as itineraryCommands } from "../src/commands/itinerary";
 import { commands as settlementCommands } from "../src/commands/settlement";
 import { commands as packingCommands } from "../src/commands/packing";
 import { commands as galleryCommands } from "../src/commands/gallery";
 import { commands as searchCommands } from "../src/commands/search";
+import { commands as roleCommands } from "../src/commands/role";
+import { commands as recommendCommands } from "../src/commands/recommend";
+import { commands as introCommands } from "../src/commands/intro";
 
 const allCommands = [
   ...tripCommands,
-  ...scheduleCommands,
+  ...itineraryCommands,
   ...settlementCommands,
   ...packingCommands,
   ...galleryCommands,
   ...searchCommands,
+  ...roleCommands,
+  ...recommendCommands,
+  ...introCommands,
 ];
 
 async function main() {

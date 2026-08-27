@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
+import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder } from "discord.js";
 import { Command } from "./types";
 import { requireActiveTrip } from "./helpers";
 import { addPackingItem, checkPackingItem, listPackingItems } from "../db/repositories/packingRepo";
@@ -32,7 +32,7 @@ const packingCommand: Command = {
     if (sub === "추가") {
       const item = interaction.options.getString("물품", true);
       await addPackingItem({ tripId: trip.id, userId, item });
-      await interaction.reply({ embeds: [baseEmbed("준비물 추가됨").setDescription(`"${item}" 을(를) 목록에 추가했어요.`)], ephemeral: true });
+      await interaction.reply({ embeds: [baseEmbed("준비물 추가됨").setDescription(`"${item}" 을(를) 목록에 추가했어요.`)], flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -40,22 +40,22 @@ const packingCommand: Command = {
       const item = interaction.options.getString("물품", true);
       const count = await checkPackingItem({ tripId: trip.id, userId, item });
       if (count === 0) {
-        await interaction.reply({ embeds: [errorEmbed(`"${item}" 항목을 찾지 못했어요.`)], ephemeral: true });
+        await interaction.reply({ embeds: [errorEmbed(`"${item}" 항목을 찾지 못했어요.`)], flags: MessageFlags.Ephemeral });
         return;
       }
-      await interaction.reply({ embeds: [baseEmbed("체크 완료 ✅").setDescription(`"${item}" 챙겼어요!`)], ephemeral: true });
+      await interaction.reply({ embeds: [baseEmbed("체크 완료 ✅").setDescription(`"${item}" 챙겼어요!`)], flags: MessageFlags.Ephemeral });
       return;
     }
 
     // 목록
     const items = await listPackingItems(trip.id, userId);
     if (items.length === 0) {
-      await interaction.reply({ embeds: [baseEmbed("준비물 목록").setDescription("아직 등록된 준비물이 없어요.")], ephemeral: true });
+      await interaction.reply({ embeds: [baseEmbed("준비물 목록").setDescription("아직 등록된 준비물이 없어요.")], flags: MessageFlags.Ephemeral });
       return;
     }
 
     const lines = items.map((i) => `${i.checked ? "✅" : "⬜"} ${i.item}`).join("\n");
-    await interaction.reply({ embeds: [baseEmbed(`${trip.destination} 내 준비물`).setDescription(lines)], ephemeral: true });
+    await interaction.reply({ embeds: [baseEmbed(`${trip.destination} 내 준비물`).setDescription(lines)], flags: MessageFlags.Ephemeral });
   },
 };
 

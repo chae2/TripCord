@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum TripStatus {
@@ -39,20 +40,57 @@ model Trip {
   photos        Photo[]
   packingItems  PackingItem[]
   weatherSnapshots WeatherSnapshot[]
+  roles         Role[]
+  participants  Participant[]
 
   @@index([guildId, status])
 }
 
 model ScheduleItem {
+  id         String    @id @default(cuid())
+  tripId     String
+  trip       Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  dayNumber  Int
+  content    String
+  createdBy  String
+  createdAt  DateTime  @default(now())
+  notifiedAt DateTime?
+
+  @@index([tripId, dayNumber])
+}
+
+model Role {
   id        String   @id @default(cuid())
   tripId    String
   trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  dayNumber Int
-  content   String
-  createdBy String
+  name      String
   createdAt DateTime @default(now())
 
-  @@index([tripId, dayNumber])
+  assignments RoleAssignment[]
+
+  @@unique([tripId, name])
+}
+
+model RoleAssignment {
+  id     String @id @default(cuid())
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@unique([roleId, userId])
+}
+
+model Participant {
+  id            String   @id @default(cuid())
+  tripId        String
+  trip          Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  discordUserId String
+  displayName   String
+  avatarUrl     String?
+  bio           String?
+  updatedAt     DateTime @updatedAt
+
+  @@unique([tripId, discordUserId])
 }
 
 model Expense {

@@ -1,5 +1,6 @@
 import {
   ChatInputCommandInteraction,
+  MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
@@ -84,7 +85,7 @@ const settlementCommand: Command = {
       member && typeof member.permissions !== "string" && member.permissions.has(PermissionFlagsBits.Administrator);
 
     if (!isAdmin) {
-      await interaction.reply({ embeds: [errorEmbed("정산 초기화는 서버 관리자만 할 수 있어요.")], ephemeral: true });
+      await interaction.reply({ embeds: [errorEmbed("정산 초기화는 서버 관리자만 할 수 있어요.")], flags: MessageFlags.Ephemeral });
       return;
     }
 

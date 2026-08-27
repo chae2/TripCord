@@ -16,3 +16,13 @@ export async function listScheduleItems(tripId: string, dayNumber?: number): Pro
     orderBy: [{ dayNumber: "asc" }, { createdAt: "asc" }],
   });
 }
+
+export async function listUnnotifiedForDay(tripId: string, dayNumber: number): Promise<ScheduleItem[]> {
+  return prisma.scheduleItem.findMany({
+    where: { tripId, dayNumber, notifiedAt: null },
+  });
+}
+
+export async function markNotified(itemId: string, when: Date): Promise<void> {
+  await prisma.scheduleItem.update({ where: { id: itemId }, data: { notifiedAt: when } });
+}

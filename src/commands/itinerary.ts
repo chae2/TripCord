@@ -4,10 +4,10 @@ import { requireActiveTrip } from "./helpers";
 import { addScheduleItem, listScheduleItems } from "../db/repositories/scheduleRepo";
 import { baseEmbed } from "../utils/embeds";
 
-const scheduleCommand: Command = {
+const itineraryCommand: Command = {
   data: new SlashCommandBuilder()
-    .setName("스케줄")
-    .setDescription("여행 일정을 등록하거나 확인합니다")
+    .setName("일정")
+    .setDescription("여행 일정을 등록하거나 확인합니다 (당일 아침에 자동으로 안내돼요)")
     .addSubcommand((sub) =>
       sub
         .setName("추가")
@@ -40,7 +40,7 @@ const scheduleCommand: Command = {
       });
 
       await interaction.reply({
-        embeds: [baseEmbed(`${dayNumber}일차 일정 추가됨`).setDescription(content)],
+        embeds: [baseEmbed(`${dayNumber}일차 일정 추가됨`).setDescription(`${content}\n\n해당 일차 당일 아침에 자동으로 안내해드릴게요.`)],
       });
       return;
     }
@@ -70,4 +70,4 @@ const scheduleCommand: Command = {
   },
 };
 
-export const commands: Command[] = [scheduleCommand];
+export const commands: Command[] = [itineraryCommand];
