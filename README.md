@@ -10,7 +10,7 @@
 - Supabase Storage 버킷 (사진 미러링용, 기본 이름 `trip-photos`) — Supabase 프로젝트에서 **public** 버킷으로 생성
 - RapidAPI 키. 마켓플레이스에서 "Sky Scrapper"(항공권, 호스트 `sky-scrapper.p.rapidapi.com`)와 "Booking.com"(숙소, 호스트 `booking-com15.p.rapidapi.com`) 두 상품을 검색해 각각 무료 Basic 플랜으로 **Subscribe**해야 한다 — 구독 안 하면 403 "not subscribed" 에러가 난다
 - OpenWeatherMap API 키 (One Call API 3.0 구독 필요, 무료 티어로 일 1,000회까지 가능)
-- 카카오 개발자 REST API 키 ([Kakao Developers](https://developers.kakao.com), 로컬(장소 검색) API 활성화)
+- 카카오 개발자 REST API 키 ([Kakao Developers](https://developers.kakao.com)) — 앱 생성 후 **제품 설정 > 카카오맵**에서 사용 설정을 반드시 ON으로 켤 것. 꺼져 있으면 `/추천` 호출 시 403 `NotAuthorizedError`(disabled OPEN_MAP_AND_LOCAL service)가 난다. 이건 사용자 동의(OAuth scope) 문제가 아니라 앱 단위 콘솔 설정이다.
 
 ## 로컬 실행
 
@@ -43,9 +43,9 @@ npm start
 | `/예약 위치 우선순위 명수 [출발일] [복귀일]` | Skyscanner/Agoda 계열 검색 |
 | `/일정 추가\|보기` | 일차별 일정 관리 (당일 아침 08:00에 자동 안내) |
 | `/정산 기록\|현황\|초기화` | 결제자 기준 N분의 1 정산 |
-| `/준비 추가\|목록\|완료` | 개인 준비물 체크리스트 |
+| `/준비 추가\|공통추가\|목록` | 개인/공통 준비물 체크리스트 (버튼으로 체크, 물품은 띄어쓰기로 여러 개 한번에 추가) |
 | `/갤러리 [일차] [위치]` | 사진 갤러리 (채널에 이미지 업로드 시 자동 수집) |
-| `/역할 추가\|배정\|랜덤\|보기` | 준비 역할 관리 (역할당 다중 배정 가능, 랜덤 사다리타기 지원) |
+| `/역할 추가\|삭제\|배정\|배정해제\|랜덤\|보기` | 준비 역할 관리 (역할당 다중 배정 가능, `/역할 랜덤`은 역할 순서대로 인원수를 지정해 무작위 배정하고 재실행 시 이전 배정을 초기화) |
 | `/추천 키워드 [지역]` | "여행 일정 조사" 역할을 가진 사람만 사용 가능, 카카오 로컬 API로 장소 검색 |
 | `/자기소개 내용` | 웹 대시보드에 표시될 내 소개 등록 |
 

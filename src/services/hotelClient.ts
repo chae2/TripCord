@@ -47,10 +47,11 @@ async function resolveDestinationWithFallback(query: string): Promise<{ destId: 
                     resolvedName: first.name ?? currentQuery
                 };
             }
-        } catch (error: any) {
+        } catch (error) {
             // 429 에러 발생 시 완전히 종료하지 않고, 루프를 멈추거나 로그만 남김
-            console.warn(`[API] ${currentQuery} 검색 중 에러:`, error.message);
-            if (error.message.includes("429")) throw error; // 429는 한도 초과이므로 바로 던짐
+            const message = error instanceof Error ? error.message : String(error);
+            console.warn(`[API] ${currentQuery} 검색 중 에러:`, message);
+            if (message.includes("429")) throw error; // 429는 한도 초과이므로 바로 던짐
         }
 
         // 2. 검색에 실패했다면 마지막 단어를 하나 빼고 범위를 넓혀서 재검색

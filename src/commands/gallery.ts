@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder } from "discord.js";
+import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import { Command } from "./types";
 import { requireActiveTrip } from "./helpers";
 import { listPhotos } from "../db/repositories/photoRepo";
@@ -22,9 +22,8 @@ const galleryCommand: Command = {
     const photos = await listPhotos({ tripId: trip.id, dayNumber, locationTag });
 
     if (photos.length === 0) {
-      await interaction.reply({
+      await interaction.editReply({
         embeds: [errorEmbed("조건에 맞는 사진이 없어요. 사진을 채널에 올리면 자동으로 갤러리에 모여요.")],
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -39,7 +38,7 @@ const galleryCommand: Command = {
         { name: "위치", value: photo.locationTag ?? "미상", inline: true }
       );
 
-    await interaction.reply({
+    await interaction.editReply({
       embeds: [embed],
       components: [galleryButtons(trip.id, index, photos.length, { dayNumber, locationTag })],
     });

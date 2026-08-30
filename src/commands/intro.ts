@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder } from "discord.js";
+import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import { Command } from "./types";
 import { requireActiveTrip } from "./helpers";
 import { setBio } from "../db/repositories/participantRepo";
@@ -11,7 +11,7 @@ const introCommand: Command = {
     .addStringOption((opt) => opt.setName("내용").setDescription("소개 문구").setRequired(true)),
 
   async execute(interaction: ChatInputCommandInteraction) {
-    const trip = await requireActiveTrip(interaction);
+    const trip = await requireActiveTrip(interaction, { ephemeral: true });
     if (!trip) return;
 
     const bio = interaction.options.getString("내용", true);
@@ -23,7 +23,7 @@ const introCommand: Command = {
       avatarUrl: interaction.user.displayAvatarURL(),
     });
 
-    await interaction.reply({ embeds: [baseEmbed("소개 등록됨").setDescription(bio)], flags: MessageFlags.Ephemeral });
+    await interaction.editReply({ embeds: [baseEmbed("소개 등록됨").setDescription(bio)] });
   },
 };
 

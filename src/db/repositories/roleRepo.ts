@@ -51,30 +51,62 @@ export async function isUserAssignedToRole(tripId: string, roleName: string, use
   return Boolean(role && role.assignments.length > 0);
 }
 
-/** 역할 목록과 참가자 목록을 각각 셔플한 뒤 라운드로빈으로 배정한다 (사다리타기 방식). */
-export async function randomAssign(tripId: string, participantIds: string[]): Promise<Map<string, string[]>> {
-  const roles = await prisma.role.findMany({ where: { tripId } });
+export async function deleteRole(tripId: string, name: string): Promise<void> {
+  const role = await prisma.role.findUnique({ where: { tripId_name: { tripId, name } } });
+  if (!role) {
+    throw new Error("ROLE_NOT_FOUND");
+  }
+  await prisma.role.delete({ where: { id: role.id } });
+}
+
+export async function unassignRole(tripId: string, roleName: string, userId: string): Promise<void> {
+  const role = await prisma.role.findUnique({ where: { tripId_name: { tripId, name: roleName } } });
+  if (!role) {
+    throw new Error("ROLE_NOT_FOUND");
+  }
+  await prisma.roleAssignment.deleteMany({ where: { roleId: role.id, userId } });
+}
+
+async function clearAllAssignments(tripId: string): Promise<void> {
+  const roles = await prisma.role.findMany({ where: { tripId }, select: { id: true } });
+  await prisma.roleAssignment.deleteMany({ where: { roleId: { in: roles.map((r) => r.id) } } });
+}
+
+/**
+ * 역할별로 원하는 인원 수(counts, 역할 생성 순서와 1:1 대응)를 받아 참가자 풀에서 무작위로 배정한다.
+ * 인원 > 역할 상황을 위해 만든 기능이라, 같은 사람이 여러 역할에 중복 배정될 수 있다(역할 내부에서는 중복 없음).
+ * 재실행 시 이전 배정은 전부 초기화하고 새로 배정한다.
+ */
+export async function randomAssignByCounts(
+  tripId: string,
+  counts: number[],
+  participantIds: string[]
+): Promise<Map<string, string[]>> {
+  const roles = await prisma.role.findMany({ where: { tripId }, orderBy: { createdAt: "asc" } });
   if (roles.length === 0) {
     throw new Error("NO_ROLES");
   }
+  if (roles.length !== counts.length) {
+    throw new Error("COUNT_MISMATCH");
+  }
 
-  const shuffledRoles = shuffle(roles);
-  const shuffledParticipants = shuffle(participantIds);
+  await clearAllAssignments(tripId);
 
-  const assignment = new Map<string, string[]>(); // roleName -> userIds
-  for (const role of shuffledRoles) assignment.set(role.name, []);
+  const assignment = new Map<string, string[]>();
+  const creates: { roleId: string; userId: string }[] = [];
 
-  await prisma.$transaction(
-    shuffledParticipants.map((userId, index) => {
-      const role = shuffledRoles[index % shuffledRoles.length]!;
-      assignment.get(role.name)!.push(userId);
-      return prisma.roleAssignment.upsert({
-        where: { roleId_userId: { roleId: role.id, userId } },
-        update: {},
-        create: { roleId: role.id, userId },
-      });
-    })
-  );
+  roles.forEach((role, i) => {
+    const count = counts[i]!;
+    const picked = shuffle(participantIds).slice(0, Math.min(count, participantIds.length));
+    assignment.set(role.name, picked);
+    for (const userId of picked) {
+      creates.push({ roleId: role.id, userId });
+    }
+  });
+
+  if (creates.length > 0) {
+    await prisma.roleAssignment.createMany({ data: creates, skipDuplicates: true });
+  }
 
   return assignment;
 }

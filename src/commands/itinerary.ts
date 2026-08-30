@@ -39,7 +39,7 @@ const itineraryCommand: Command = {
         createdBy: interaction.user.id,
       });
 
-      await interaction.reply({
+      await interaction.editReply({
         embeds: [baseEmbed(`${dayNumber}일차 일정 추가됨`).setDescription(`${content}\n\n해당 일차 당일 아침에 자동으로 안내해드릴게요.`)],
       });
       return;
@@ -50,7 +50,7 @@ const itineraryCommand: Command = {
     const items = await listScheduleItems(trip.id, dayNumber);
 
     if (items.length === 0) {
-      await interaction.reply({ embeds: [baseEmbed("일정 없음").setDescription("아직 등록된 일정이 없어요.")] });
+      await interaction.editReply({ embeds: [baseEmbed("일정 없음").setDescription("아직 등록된 일정이 없어요.")] });
       return;
     }
 
@@ -66,7 +66,7 @@ const itineraryCommand: Command = {
       embed.addFields({ name: `${day}일차`, value: contents.map((c) => `• ${c}`).join("\n") });
     }
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
   },
 };
 

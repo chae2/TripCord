@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder } from "discord.js";
+import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import { Command } from "./types";
 import { requireActiveTrip } from "./helpers";
 import { isUserAssignedToRole } from "../db/repositories/roleRepo";
@@ -20,19 +20,16 @@ const recommendCommand: Command = {
 
     const isAssigned = await isUserAssignedToRole(trip.id, ITINERARY_ROLE_NAME, interaction.user.id);
     if (!isAssigned) {
-      await interaction.reply({
+      await interaction.editReply({
         embeds: [
           errorEmbed(`"${ITINERARY_ROLE_NAME}" 역할을 가진 사람만 사용할 수 있어요. \`/역할 배정 역할:${ITINERARY_ROLE_NAME}\` 로 먼저 등록해주세요.`),
         ],
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
 
     const keyword = interaction.options.getString("키워드", true);
     const region = interaction.options.getString("지역") ?? trip.destination;
-
-    await interaction.deferReply();
 
     try {
       const places = await searchPlaces(`${region} ${keyword}`);

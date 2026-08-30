@@ -14,6 +14,11 @@ enum TripStatus {
   DONE
 }
 
+enum PackingScope {
+  PERSONAL
+  SHARED
+}
+
 model Guild {
   id            String   @id // discord guild snowflake
   activeTripId  String?  @unique
@@ -133,15 +138,17 @@ model Photo {
 }
 
 model PackingItem {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
   tripId    String
-  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  userId    String
+  trip      Trip         @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  userId    String // PERSONAL: 소유자, SHARED: 추가한 사람(작성자 표시용)
+  scope     PackingScope @default(PERSONAL)
   item      String
-  checked   Boolean  @default(false)
-  createdAt DateTime @default(now())
+  checked   Boolean      @default(false)
+  createdAt DateTime     @default(now())
 
   @@index([tripId, userId])
+  @@index([tripId, scope])
 }
 
 model WeatherSnapshot {
