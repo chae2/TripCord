@@ -3,8 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "prisma generate --schema=../prisma/schema.prisma && next dev",
-    "build": "prisma generate --schema=../prisma/schema.prisma && next build",
+    "prisma:generate": "prisma generate --schema=../prisma/schema.prisma",
+    "dev": "run-s prisma:generate next:dev",
+    "build": "run-s prisma:generate next:build",
+    "next:dev": "next dev",
+    "next:build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
@@ -20,6 +23,7 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.35",
+    "npm-run-all2": "^6.2.3",
     "postcss": "^8.4.45",
     "prisma": "^5.20.0",
     "tailwindcss": "^3.4.11",

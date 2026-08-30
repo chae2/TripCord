@@ -85,6 +85,19 @@ export async function getTripsInProgress(now: Date): Promise<Trip[]> {
   });
 }
 
+/** 종료일 "다음날"이 된 여행을 찾는다 (endDate 당일이 아니라 그 다음날 자정부터). */
+export async function getTripsPastEndDate(now: Date): Promise<Trip[]> {
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  return prisma.trip.findMany({
+    where: {
+      status: { in: [TripStatus.PLANNING, TripStatus.ONGOING] },
+      endDate: { lt: startOfToday },
+    },
+  });
+}
+
 export async function getTripsStartingTomorrow(now: Date): Promise<Trip[]> {
   const startOfTomorrow = new Date(now);
   startOfTomorrow.setHours(0, 0, 0, 0);

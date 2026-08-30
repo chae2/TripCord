@@ -1,24 +1,25 @@
 import { TripStatus } from "@prisma/client";
 import { prisma } from "./prisma";
+import { DebtTransfer, simplifyDebts } from "./settlementPairwise";
 
 export interface DashboardParticipant {
   id: string;
   discordUserId: string;
   displayName: string;
   avatarUrl: string | null;
-  bio: string | null;
+  introName: string | null;
+  nickname: string | null;
+  likes: string | null;
+  dislikes: string | null;
+  quirks: string | null;
+  extra: string | null;
   roles: string[];
 }
 
 export interface DashboardDay {
   dayNumber: number;
-  items: { id: string; content: string }[];
+  items: { id: string; content: string; location: string | null; time: string | null }[];
   photos: { id: string; storageUrl: string; uploaderId: string; locationTag: string | null }[];
-}
-
-export interface DashboardBalance {
-  userId: string;
-  netAmount: number;
 }
 
 export interface DashboardData {
@@ -31,7 +32,7 @@ export interface DashboardData {
   };
   participants: DashboardParticipant[];
   days: DashboardDay[];
-  balances: DashboardBalance[];
+  transfers: DebtTransfer[];
 }
 
 export async function getDashboardData(): Promise<DashboardData | null> {
@@ -71,7 +72,12 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     discordUserId: p.discordUserId,
     displayName: p.displayName,
     avatarUrl: p.avatarUrl,
-    bio: p.bio,
+    introName: p.introName,
+    nickname: p.nickname,
+    likes: p.likes,
+    dislikes: p.dislikes,
+    quirks: p.quirks,
+    extra: p.extra,
     roles: rolesByUser.get(p.discordUserId) ?? [],
   }));
 
@@ -86,7 +92,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   };
 
   for (const item of scheduleItems) {
-    dayFor(item.dayNumber).items.push({ id: item.id, content: item.content });
+    dayFor(item.dayNumber).items.push({ id: item.id, content: item.content, location: item.location, time: item.time });
   }
   for (const photo of photos) {
     if (photo.dayNumber === null) continue;
@@ -106,9 +112,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     bump(expense.payerId, expense.amount);
     for (const share of expense.shares) bump(share.userId, -share.shareAmount);
   }
-  const balances = Array.from(net.entries())
-    .map(([userId, netAmount]) => ({ userId, netAmount }))
-    .sort((a, b) => b.netAmount - a.netAmount);
+  const transfers = simplifyDebts(net);
 
   return {
     trip: {
@@ -120,6 +124,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     },
     participants: dashboardParticipants,
     days,
-    balances,
+    transfers,
   };
 }

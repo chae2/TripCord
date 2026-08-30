@@ -54,7 +54,7 @@ export default async function DashboardPage() {
 
       <section>
         <SectionTitle>정산</SectionTitle>
-        <SettlementTable balances={data.balances} participants={data.participants} />
+        <SettlementTable transfers={data.transfers} participants={data.participants} />
       </section>
     </main>
   );

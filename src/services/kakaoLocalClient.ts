@@ -1,12 +1,8 @@
 import { request } from "undici";
 import { env } from "../config/env";
+import { PlaceResult } from "./placeTypes";
 
-export interface PlaceResult {
-  name: string;
-  category: string;
-  address: string;
-  url: string;
-}
+export type { PlaceResult };
 
 interface KeywordSearchResponse {
   documents?: {

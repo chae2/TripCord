@@ -9,6 +9,7 @@ import { commands as galleryCommands } from "../src/commands/gallery";
 import { commands as searchCommands } from "../src/commands/search";
 import { commands as roleCommands } from "../src/commands/role";
 import { commands as recommendCommands } from "../src/commands/recommend";
+import { commands as mealRecommendCommands } from "../src/commands/mealRecommend";
 import { commands as introCommands } from "../src/commands/intro";
 
 const allCommands = [
@@ -20,6 +21,7 @@ const allCommands = [
   ...searchCommands,
   ...roleCommands,
   ...recommendCommands,
+  ...mealRecommendCommands,
   ...introCommands,
 ];
 

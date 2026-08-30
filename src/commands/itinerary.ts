@@ -4,6 +4,13 @@ import { requireActiveTrip } from "./helpers";
 import { addScheduleItem, listScheduleItems } from "../db/repositories/scheduleRepo";
 import { baseEmbed } from "../utils/embeds";
 
+function formatItem(content: string, location?: string | null, time?: string | null): string {
+  const parts = [content];
+  if (time) parts.push(`🕐 ${time}`);
+  if (location) parts.push(`📍 ${location}`);
+  return parts.join(" · ");
+}
+
 const itineraryCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("일정")
@@ -14,6 +21,8 @@ const itineraryCommand: Command = {
         .setDescription("일차별 일정을 추가합니다")
         .addIntegerOption((opt) => opt.setName("일차").setDescription("몇 일차인지 (1부터)").setRequired(true).setMinValue(1))
         .addStringOption((opt) => opt.setName("내용").setDescription("일정 내용").setRequired(true))
+        .addStringOption((opt) => opt.setName("위치").setDescription("장소 (텍스트 또는 링크 모두 가능)").setRequired(false))
+        .addStringOption((opt) => opt.setName("시간").setDescription("예: 14:00").setRequired(false))
     )
     .addSubcommand((sub) =>
       sub
@@ -31,16 +40,24 @@ const itineraryCommand: Command = {
     if (sub === "추가") {
       const dayNumber = interaction.options.getInteger("일차", true);
       const content = interaction.options.getString("내용", true);
+      const location = interaction.options.getString("위치") ?? undefined;
+      const time = interaction.options.getString("시간") ?? undefined;
 
       await addScheduleItem({
         tripId: trip.id,
         dayNumber,
         content,
+        location,
+        time,
         createdBy: interaction.user.id,
       });
 
       await interaction.editReply({
-        embeds: [baseEmbed(`${dayNumber}일차 일정 추가됨`).setDescription(`${content}\n\n해당 일차 당일 아침에 자동으로 안내해드릴게요.`)],
+        embeds: [
+          baseEmbed(`${dayNumber}일차 일정 추가됨`).setDescription(
+            `${formatItem(content, location, time)}\n\n해당 일차 당일 아침에 자동으로 안내해드릴게요.`
+          ),
+        ],
       });
       return;
     }
@@ -57,7 +74,7 @@ const itineraryCommand: Command = {
     const grouped = new Map<number, string[]>();
     for (const item of items) {
       const list = grouped.get(item.dayNumber) ?? [];
-      list.push(item.content);
+      list.push(formatItem(item.content, item.location, item.time));
       grouped.set(item.dayNumber, list);
     }
 

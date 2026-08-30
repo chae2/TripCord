@@ -21,8 +21,13 @@ export async function announceTodaysSchedule(client: Client): Promise<void> {
       if (!channel || !(channel instanceof TextChannel)) continue;
 
       for (const item of items) {
+        const extra = [item.time && `🕐 ${item.time}`, item.location && `📍 ${item.location}`].filter(Boolean).join(" · ");
         await channel.send({
-          embeds: [baseEmbed(`${today}일차 오늘의 일정 📅`).setDescription(`오늘은 "${item.content}"를 수행할 날입니다!`)],
+          embeds: [
+            baseEmbed(`${today}일차 오늘의 일정 📅`).setDescription(
+              `오늘은 "${item.content}"를 수행할 날입니다!${extra ? `\n${extra}` : ""}`
+            ),
+          ],
         });
         await markNotified(item.id, now);
       }

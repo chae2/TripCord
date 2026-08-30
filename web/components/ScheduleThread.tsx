@@ -25,6 +25,13 @@ export function ScheduleThread({ days, canEdit }: { days: DashboardDay[]; canEdi
                     endpoint={`/api/schedule/${item.id}`}
                     field="content"
                   />
+                  {(item.time || item.location) && (
+                    <p className="mt-0.5 text-xs text-slate-400">
+                      {item.time && <span>🕐 {item.time}</span>}
+                      {item.time && item.location && <span> · </span>}
+                      {item.location && <span>📍 {item.location}</span>}
+                    </p>
+                  )}
                 </li>
               ))}
             </ul>

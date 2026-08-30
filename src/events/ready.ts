@@ -3,6 +3,7 @@ import { TripCordClient } from "../discordClient";
 import { pollWeatherForUpcomingTrips } from "../scheduler/weatherPolling";
 import { sendDailyReminders } from "../scheduler/dailyReminder";
 import { announceTodaysSchedule } from "../scheduler/scheduleAnnouncement";
+import { autoEndPastTrips } from "../scheduler/tripAutoEnd";
 import { env } from "../config/env";
 
 export function registerReady(client: TripCordClient): void {
@@ -32,6 +33,15 @@ export function registerReady(client: TripCordClient): void {
       "0 8 * * *",
       () => {
         announceTodaysSchedule(client).catch((err) => console.error("[cron] scheduleAnnouncement 실패:", err));
+      },
+      { timezone: env.timezone }
+    );
+
+    // 매일 00:05: 종료일이 지난 여행 자동 종료
+    cron.schedule(
+      "5 0 * * *",
+      () => {
+        autoEndPastTrips(client).catch((err) => console.error("[cron] tripAutoEnd 실패:", err));
       },
       { timezone: env.timezone }
     );

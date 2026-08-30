@@ -69,7 +69,7 @@ export async function searchHotels(params: {
     travelers: number;
     checkIn: string;
     checkOut: string;
-    sortBy: "price" | "rating";
+    sortBy: "price" | "rating" | "recommended"; // recommended: API가 준 순서(추천순) 그대로 사용
 }): Promise<HotelOption[]> {
     const destination = await resolveDestinationWithFallback(params.location);
 
@@ -113,7 +113,12 @@ export async function searchHotels(params: {
         };
     });
 
-    withSortKeys.sort((a, b) => (params.sortBy === "rating" ? b.rating - a.rating : a.priceValue - b.priceValue));
+    if (params.sortBy === "rating") {
+        withSortKeys.sort((a, b) => b.rating - a.rating);
+    } else if (params.sortBy === "price") {
+        withSortKeys.sort((a, b) => a.priceValue - b.priceValue);
+    }
+    // recommended: 정렬 없이 API가 준 순서(Booking.com 자체 추천순) 그대로 유지
 
     return withSortKeys.slice(0, 5).map((h) => h.option);
 }

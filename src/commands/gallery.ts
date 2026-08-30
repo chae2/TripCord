@@ -4,6 +4,7 @@ import { requireActiveTrip } from "./helpers";
 import { listPhotos } from "../db/repositories/photoRepo";
 import { baseEmbed, errorEmbed } from "../utils/embeds";
 import { galleryButtons } from "../utils/pagination";
+import { env } from "../config/env";
 
 const galleryCommand: Command = {
   data: new SlashCommandBuilder()
@@ -37,6 +38,9 @@ const galleryCommand: Command = {
         { name: "일차", value: photo.dayNumber ? `${photo.dayNumber}일차` : "미상", inline: true },
         { name: "위치", value: photo.locationTag ?? "미상", inline: true }
       );
+    if (env.webBaseUrl) {
+      embed.setFooter({ text: "전체 사진과 일정은 웹 대시보드에서 한눈에 볼 수 있어요" }).setURL(env.webBaseUrl);
+    }
 
     await interaction.editReply({
       embeds: [embed],

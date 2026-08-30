@@ -6,11 +6,12 @@ import {
   assignRole,
   deleteRole,
   listRolesWithAssignees,
-  randomAssignByCounts,
+  randomAssign,
+  renameRole,
   unassignRole,
 } from "../db/repositories/roleRepo";
 import { baseEmbed, errorEmbed } from "../utils/embeds";
-import { extractMentionedUserIds } from "../utils/mentions";
+import { resolveMentionedUserIds } from "../utils/mentions";
 
 const roleCommand: Command = {
   data: new SlashCommandBuilder()
@@ -30,6 +31,13 @@ const roleCommand: Command = {
     )
     .addSubcommand((sub) =>
       sub
+        .setName("수정")
+        .setDescription("역할 이름을 변경합니다")
+        .addStringOption((opt) => opt.setName("역할").setDescription("기존 역할 이름").setRequired(true).setAutocomplete(true))
+        .addStringOption((opt) => opt.setName("새이름").setDescription("바꿀 이름").setRequired(true))
+    )
+    .addSubcommand((sub) =>
+      sub
         .setName("배정")
         .setDescription("역할을 사람에게 배정합니다 (여러 명 배정 가능)")
         .addStringOption((opt) => opt.setName("역할").setDescription("역할 이름").setRequired(true).setAutocomplete(true))
@@ -45,15 +53,12 @@ const roleCommand: Command = {
     .addSubcommand((sub) =>
       sub
         .setName("랜덤")
-        .setDescription("등록된 역할 순서대로 인원수를 정해 참가자에게 무작위로 나눠줍니다 (재실행 시 이전 배정은 초기화됩니다)")
+        .setDescription("참가자에게 역할을 무작위로 나눠줍니다 (재실행 시 이전 배정은 초기화됩니다)")
         .addStringOption((opt) =>
           opt
-            .setName("인원수")
-            .setDescription("`/역할 보기` 순서대로 역할당 인원수를 공백으로 구분 (예: 1 1 2 2 3 1)")
+            .setName("대상")
+            .setDescription("배정 대상 참가자들을 멘션하세요 (예: @채일 @밀라노, @everyone도 가능)")
             .setRequired(true)
-        )
-        .addStringOption((opt) =>
-          opt.setName("대상").setDescription("배정 대상 참가자들을 멘션하세요 (예: @채일 @밀라노)").setRequired(true)
         )
     )
     .addSubcommand((sub) => sub.setName("보기").setDescription("역할별 배정 현황을 봅니다")),
@@ -79,6 +84,28 @@ const roleCommand: Command = {
       } catch (err) {
         if (err instanceof Error && err.message === "ROLE_NOT_FOUND") {
           await interaction.editReply({ embeds: [errorEmbed(`"${roleName}" 역할을 찾지 못했어요.`)] });
+          return;
+        }
+        throw err;
+      }
+      return;
+    }
+
+    if (sub === "수정") {
+      const roleName = interaction.options.getString("역할", true);
+      const newName = interaction.options.getString("새이름", true);
+      try {
+        await renameRole(trip.id, roleName, newName);
+        await interaction.editReply({
+          embeds: [baseEmbed("역할 이름 변경됨").setDescription(`"${roleName}" → "${newName}"`)],
+        });
+      } catch (err) {
+        if (err instanceof Error && err.message === "ROLE_NOT_FOUND") {
+          await interaction.editReply({ embeds: [errorEmbed(`"${roleName}" 역할을 찾지 못했어요.`)] });
+          return;
+        }
+        if (err instanceof Error && err.message === "ROLE_NAME_TAKEN") {
+          await interaction.editReply({ embeds: [errorEmbed(`"${newName}" 역할이 이미 있어요.`)] });
           return;
         }
         throw err;
@@ -127,26 +154,15 @@ const roleCommand: Command = {
     }
 
     if (sub === "랜덤") {
-      const countsInput = interaction.options.getString("인원수", true);
-      const counts = countsInput
-        .trim()
-        .split(/\s+/)
-        .map((n) => Number(n));
-
-      if (counts.some((n) => Number.isNaN(n) || n < 0)) {
-        await interaction.editReply({ embeds: [errorEmbed("인원수는 공백으로 구분된 0 이상의 숫자여야 해요. 예: 1 1 2 2 3 1")] });
-        return;
-      }
-
-      const participantIds = extractMentionedUserIds(interaction.options.getString("대상", true));
+      const participantIds = await resolveMentionedUserIds(interaction.guild, interaction.options.getString("대상", true));
 
       if (participantIds.length === 0) {
-        await interaction.editReply({ embeds: [errorEmbed("배정할 참가자를 멘션해주세요. 예: `/역할 랜덤 인원수:1 1 대상:@채일 @밀라노`")] });
+        await interaction.editReply({ embeds: [errorEmbed("배정할 참가자를 멘션해주세요. 예: `/역할 랜덤 대상:@채일 @밀라노`")] });
         return;
       }
 
       try {
-        const assignment = await randomAssignByCounts(trip.id, counts, participantIds);
+        const assignment = await randomAssign(trip.id, participantIds);
         const lines = Array.from(assignment.entries()).map(
           ([roleName, userIds]) => `**${roleName}**: ${userIds.length > 0 ? userIds.map((id) => `<@${id}>`).join(", ") : "미배정"}`
         );
@@ -156,17 +172,6 @@ const roleCommand: Command = {
       } catch (err) {
         if (err instanceof Error && err.message === "NO_ROLES") {
           await interaction.editReply({ embeds: [errorEmbed("등록된 역할이 없어요. `/역할 추가`로 먼저 만들어주세요.")] });
-          return;
-        }
-        if (err instanceof Error && err.message === "COUNT_MISMATCH") {
-          const roles = await listRolesWithAssignees(trip.id);
-          await interaction.editReply({
-            embeds: [
-              errorEmbed(
-                `인원수 개수가 현재 역할 개수(${roles.length}개)와 달라요.\n현재 역할 순서: ${roles.map((r) => r.name).join(", ")}`
-              ),
-            ],
-          });
           return;
         }
         throw err;

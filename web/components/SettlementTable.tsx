@@ -1,35 +1,33 @@
-import { DashboardBalance, DashboardParticipant } from "@/lib/data";
+import { DashboardParticipant } from "@/lib/data";
+import { DebtTransfer } from "@/lib/settlementPairwise";
 
 function displayName(participants: DashboardParticipant[], userId: string): string {
   return participants.find((p) => p.discordUserId === userId)?.displayName ?? userId;
 }
 
 export function SettlementTable({
-  balances,
+  transfers,
   participants,
 }: {
-  balances: DashboardBalance[];
+  transfers: DebtTransfer[];
   participants: DashboardParticipant[];
 }) {
-  if (balances.length === 0) {
-    return <p className="text-sm text-slate-400">아직 기록된 정산이 없어요.</p>;
+  if (transfers.length === 0) {
+    return <p className="text-sm text-slate-400">정산할 내역이 없어요. 다들 깔끔해요!</p>;
   }
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
       <table className="w-full text-sm">
         <tbody>
-          {balances.map((b, i) => (
-            <tr key={b.userId} className={i !== balances.length - 1 ? "border-b border-slate-100" : ""}>
-              <td className="px-4 py-3 font-medium text-slate-800">{displayName(participants, b.userId)}</td>
-              <td
-                className={`px-4 py-3 text-right font-semibold ${
-                  b.netAmount > 0 ? "text-accent-dark" : b.netAmount < 0 ? "text-red-500" : "text-slate-400"
-                }`}
-              >
-                {b.netAmount > 0 ? "받을 돈 " : b.netAmount < 0 ? "낼 돈 " : "정산 완료"}
-                {b.netAmount !== 0 && `${Math.abs(b.netAmount).toLocaleString()}원`}
+          {transfers.map((t, i) => (
+            <tr key={`${t.fromUserId}-${t.toUserId}-${i}`} className={i !== transfers.length - 1 ? "border-b border-slate-100" : ""}>
+              <td className="px-4 py-3 font-medium text-slate-800">
+                {displayName(participants, t.fromUserId)}
+                <span className="mx-2 text-slate-300">→</span>
+                {displayName(participants, t.toUserId)}
               </td>
+              <td className="px-4 py-3 text-right font-semibold text-accent-dark">{t.amount.toLocaleString()}원</td>
             </tr>
           ))}
         </tbody>

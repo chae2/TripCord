@@ -5,6 +5,8 @@ export async function addScheduleItem(params: {
   tripId: string;
   dayNumber: number;
   content: string;
+  location?: string;
+  time?: string;
   createdBy: string;
 }): Promise<ScheduleItem> {
   return prisma.scheduleItem.create({ data: params });
