@@ -35,46 +35,67 @@ interface ResolvedPlace {
 
 // 지명 끝의 "도/시/군" 같은 행정구역 접미사를 떼고 비교한다 ("제주도" vs "제주공항"의 "제주"를 매칭시키기 위함).
 function normalizeForMatch(text: string): string {
-  return text.replace(/(특별자치도|특별자치시|광역시|특별시|자치시|[도시군])$/u, "").trim();
+  return text.toLowerCase().replace(/(특별자치도|특별자치시|광역시|특별시|자치시|[도시군])$/u, "").trim();
 }
 
 /** 질의어와 후보 이름의 관련도를 점수화한다. 높을수록 더 정확한 매칭. */
-function scoreCandidate(query: string, title: string): number {
-  const q = normalizeForMatch(query);
-  const t = normalizeForMatch(title);
-  if (!q || !t) return 0;
-  if (t === q) return 4;
-  if (t.startsWith(q) || q.startsWith(t)) return 3;
-  if (t.includes(q) || q.includes(t)) return 2;
-  return 0;
+/**
+ * 2. 점수화 함수 업그레이드: 토큰(단어) 기반 교집합 스코어링
+ * "미국 뉴욕" -> ["미국", "뉴욕"] 으로 쪼개서 title+subtitle 풀 스트링과 비교
+ */
+function scoreCandidate(query: string, title: string, subtitle: string = ""): number {
+    const q = normalizeForMatch(query);
+    const fullTarget = normalizeForMatch(`${title} ${subtitle}`); // 제목과 부제목(국가/지역) 병합
+
+    if (!q || !fullTarget) return 0;
+    if (fullTarget === q) return 100; // 완전 일치 시 최고점
+
+    // 공백을 기준으로 단어 분리
+    const queryTokens = q.split(/\s+/);
+    let matchCount = 0;
+
+    for (const token of queryTokens) {
+        if (fullTarget.includes(token)) {
+            matchCount += 1;
+        }
+    }
+
+    // 검색어의 모든 단어가 응답에 포함되어 있다면 높은 우선순위 부여
+    if (matchCount === queryTokens.length) return 50 + matchCount;
+    // 일부 단어만 일치하는 경우
+    if (matchCount > 0) return matchCount;
+
+    return 0;
 }
 
-// flights-sky(RapidAPI, ntd119) 사용. Sky Scrapper(apiheya)와 별도 구독/할당량이라 한쪽이 한도를 넘어도
-// 서로 영향이 없다. 한글 질의도 지원해서 별도 지명 번역이 필요 없다(실제 호출로 확인함).
-// 단, 응답이 관련도 순이 아닐 수 있어(예: "제주도" 검색 시 "제다(사우디)"가 1순위로 오는 경우가 있었음)
-// data[0]을 그대로 믿지 않고 후보들 중 질의어와 가장 잘 맞는 것을 직접 골라야 한다.
+// 3. resolvePlace 함수 내 적용
 async function resolvePlace(query: string): Promise<ResolvedPlace | null> {
-  const res = await rapidApiGet<SearchAirportResponse>(env.rapidApiFlightHost, "/flights/auto-complete", {
-    query,
-  });
-  const candidates = res.data ?? [];
-  if (candidates.length === 0) return null;
+    const res = await rapidApiGet<SearchAirportResponse>(env.rapidApiFlightHost, "/flights/auto-complete", {
+        query,
+    });
+    const candidates = res.data ?? [];
+    if (candidates.length === 0) return null;
 
-  let best = candidates[0]!;
-  let bestScore = -1;
-  for (const candidate of candidates) {
-    const title = candidate.presentation?.title ?? candidate.navigation?.relevantFlightParams?.localizedName ?? "";
-    const score = scoreCandidate(query, title);
-    if (score > bestScore) {
-      bestScore = score;
-      best = candidate;
+    let best = candidates[0]!;
+    let bestScore = -1;
+
+    for (const candidate of candidates) {
+        const title = candidate.presentation?.title ?? candidate.navigation?.relevantFlightParams?.localizedName ?? "";
+        const subtitle = candidate.presentation?.subtitle ?? ""; // 🚨 부제목(국가) 정보 추가 추출
+
+        // 업그레이드된 스코어 함수 호출
+        const score = scoreCandidate(query, title, subtitle);
+
+        if (score > bestScore) {
+            bestScore = score;
+            best = candidate;
+        }
     }
-  }
 
-  const id = best.presentation?.id;
-  const skyId = best.navigation?.relevantFlightParams?.skyId;
-  if (!id || !skyId) return null;
-  return { entityIdParam: id, skyId };
+    const id = best.presentation?.id;
+    const skyId = best.navigation?.relevantFlightParams?.skyId;
+    if (!id || !skyId) return null;
+    return { entityIdParam: id, skyId };
 }
 
 const SEOUL_QUERY = "서울";
